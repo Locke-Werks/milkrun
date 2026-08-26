@@ -28,6 +28,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "plugin.h"
+#include "offline/pq_post.h"
 #include "resource.h"
 #include "support.h"
 //#include "evallib\eval.h"		// for math. expr. eval - thanks Francis! (in SourceOffSite, it's the 'vis_avs\evallib' project.)
@@ -779,7 +780,8 @@ void CPlugin::RenderFrame(int bRedraw)
         m_rand_frame = D3DXVECTOR4(FRAND, FRAND, FRAND, FRAND);
 
 	    // randomly change the preset, if it's time
-	    if (m_fNextPresetTime < GetTime())
+	    // (offline renders hold one preset for the whole job)
+	    if (!IsOfflineMode() && m_fNextPresetTime < GetTime())
 	    {
             if (m_nLoadingPreset==0) // don't start a load if one is already underway!
 		        LoadRandomPreset(m_fBlendTimeAuto);
@@ -1068,9 +1070,15 @@ void CPlugin::RenderFrame(int bRedraw)
 
     // Change the rendertarget back to the original setup
     lpDevice->SetTexture(0, NULL);
-    lpDevice->SetRenderTarget(0,  pBackBuffer );
+    // For HDR10 output the composite goes into a float intermediate instead of
+    // straight to the back buffer, so the conversion pass afterwards still has
+    // the overbrights to work with. It cannot live inside the composite shader,
+    // because presets are free to supply their own and would overwrite it.
+    const bool bPqPass = (m_pPqPost && m_pPqPost->IsReady());
+    lpDevice->SetRenderTarget(0, bPqPass ? m_pPqPost->CompositeTarget() : pBackBuffer);
 	 //lpDevice->SetDepthStencilSurface( pZBuffer );
-    SafeRelease(pBackBuffer);
+    if (!bPqPass)
+        SafeRelease(pBackBuffer);
     //SafeRelease(pZBuffer);
 
     // show it to the user [composite shader]
@@ -1129,6 +1137,14 @@ void CPlugin::RenderFrame(int bRedraw)
 	}
 
 	DrawUserSprites();
+
+    if (bPqPass)
+    {
+        // Everything above rendered SDR into the float buffer; this is where
+        // it becomes BT.2020 with the PQ curve, on the real back buffer.
+        m_pPqPost->Resolve(lpDevice, pBackBuffer);
+        SafeRelease(pBackBuffer);
+    }
 
 	// flip buffers
 	IDirect3DTexture9* pTemp = m_lpVS[0];

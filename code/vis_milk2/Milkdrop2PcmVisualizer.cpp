@@ -17,6 +17,9 @@
 #pragma comment(lib, "shcore.lib") // for dpi awareness
 
 #include "plugin.h"
+#include "app_device.h"
+#include "offline/cli.h"
+#include "offline/render_dialog.h"
 #include "resource.h"
 
 #include <mutex>
@@ -40,8 +43,8 @@ _locale_t g_use_C_locale;
 char keyMappings[8];
 
 static IDirect3D9* pD3D9 = nullptr;
-static IDirect3DDevice9* pD3DDevice = nullptr;
-static D3DPRESENT_PARAMETERS d3dPp;
+IDirect3DDevice9* pD3DDevice = nullptr;
+D3DPRESENT_PARAMETERS d3dPp;
 
 static LONG lastWindowStyle = 0;
 static LONG lastWindowStyleEx = 0;
@@ -63,22 +66,56 @@ static unsigned char pcmRightOut[SAMPLE_SIZE];
 
 static HICON icon = nullptr;
 
-void InitD3d(HWND hwnd, int width, int height) {
-    pD3D9 = Direct3DCreate9(D3D_SDK_VERSION);
+// Pick the adapter to render on. Machines commonly expose a virtual display
+// adapter (remote desktop, capture drivers) alongside the real GPU, and it sorts
+// first as often as not, so prefer a real vendor. NVIDIA leads because it is the
+// only one that can also serve NVENC.
+static UINT PickPreferredAdapter(IDirect3D9* pD3D) {
+    const UINT count = pD3D->GetAdapterCount();
+    const DWORD kVendorNvidia = 0x10DE, kVendorAmd = 0x1002, kVendorIntel = 0x8086;
+    const DWORD order[] = { kVendorNvidia, kVendorAmd, kVendorIntel };
 
-    D3DDISPLAYMODE mode;
-    pD3D9->GetAdapterDisplayMode(D3DADAPTER_DEFAULT, &mode);
+    for (int pass = 0; pass < ARRAYSIZE(order); pass++) {
+        for (UINT i = 0; i < count; i++) {
+            D3DADAPTER_IDENTIFIER9 id = { 0 };
+            if (SUCCEEDED(pD3D->GetAdapterIdentifier(i, 0, &id)) && id.VendorId == order[pass])
+                return i;
+        }
+    }
+    return D3DADAPTER_DEFAULT;
+}
+
+// bOffline adds the two device flags NVENC requires on top of the one the app has
+// always used, and drops vsync so an offline render is not pinned to refresh rate.
+// D3DCREATE_FPU_PRESERVE is wanted regardless: ns-eel2 evaluates preset equations
+// on the x87 FPU and D3D otherwise switches it to single precision.
+bool InitD3d(HWND hwnd, int width, int height, bool bOffline, D3DFORMAT preferredBackBufFormat) {
+    pD3D9 = Direct3DCreate9(D3D_SDK_VERSION);
+    if (!pD3D9)
+        return false;
 
     UINT adapterId = g_plugin.m_adapterId;
+    if (adapterId == 0 || adapterId >= pD3D9->GetAdapterCount())
+        adapterId = PickPreferredAdapter(pD3D9);
 
-    if (adapterId > pD3D9->GetAdapterCount()) {
-        adapterId = D3DADAPTER_DEFAULT;
+    D3DDISPLAYMODE mode;
+    if (FAILED(pD3D9->GetAdapterDisplayMode(adapterId, &mode))) {
+        DeinitD3d();
+        return false;
+    }
+
+    // Honour a wider back buffer only if the adapter can actually present it.
+    D3DFORMAT backBufFormat = mode.Format;
+    if (preferredBackBufFormat != D3DFMT_UNKNOWN &&
+        SUCCEEDED(pD3D9->CheckDeviceType(adapterId, D3DDEVTYPE_HAL, mode.Format, preferredBackBufFormat, TRUE)))
+    {
+        backBufFormat = preferredBackBufFormat;
     }
 
     memset(&d3dPp, 0, sizeof(d3dPp));
 
     d3dPp.BackBufferCount = 1;
-    d3dPp.BackBufferFormat = mode.Format;
+    d3dPp.BackBufferFormat = backBufFormat;
     d3dPp.BackBufferWidth = width;
     d3dPp.BackBufferHeight = height;
     d3dPp.SwapEffect = D3DSWAPEFFECT_COPY;
@@ -86,17 +123,27 @@ void InitD3d(HWND hwnd, int width, int height) {
     d3dPp.EnableAutoDepthStencil = TRUE;
     d3dPp.AutoDepthStencilFormat = D3DFMT_D24X8;
     d3dPp.Windowed = TRUE;
-    d3dPp.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
+    d3dPp.PresentationInterval = bOffline ? D3DPRESENT_INTERVAL_IMMEDIATE : D3DPRESENT_INTERVAL_ONE;
     d3dPp.MultiSampleType = D3DMULTISAMPLE_NONE;
     d3dPp.hDeviceWindow = (HWND) hwnd;
 
-    pD3D9->CreateDevice(
+    DWORD flags = D3DCREATE_HARDWARE_VERTEXPROCESSING;
+    if (bOffline)
+        flags |= D3DCREATE_FPU_PRESERVE | D3DCREATE_MULTITHREADED;
+
+    HRESULT hr = pD3D9->CreateDevice(
         adapterId,
         D3DDEVTYPE_HAL,
         (HWND) hwnd,
-        D3DCREATE_HARDWARE_VERTEXPROCESSING,
+        flags,
         &d3dPp,
         &pD3DDevice);
+
+    if (FAILED(hr)) {
+        DeinitD3d();
+        return false;
+    }
+    return true;
 }
 
 void DeinitD3d() {
@@ -207,6 +254,34 @@ void ToggleFullScreen(HWND hwnd) {
      stretch = false;
 }
 
+// Ctrl+R renders the running preset to a file. The offline job drives this same
+// CPlugin and the same D3D globals the live session holds, so the two can never
+// overlap. The settings dialog runs first, while the session is merely paused;
+// only a confirmed render is worth tearing the session down and rebuilding it for.
+static void RenderCurrentPresetToVideo(HWND hwnd) {
+    offline::RenderJobConfig cfg = offline::LastRenderConfig();
+    if (!offline::ShowRenderSettingsDialog(api_orig_hinstance, hwnd,
+                                           g_plugin.m_szCurrentPresetFile, cfg))
+        return;
+
+    // The render replaces d3dPp with its own size, so read the session's first.
+    const int width  = (int)d3dPp.BackBufferWidth;
+    const int height = (int)d3dPp.BackBufferHeight;
+
+    // Deliberately not MyWriteConfig: the session is coming straight back, and a
+    // render must not rewrite milk2.ini.
+    g_plugin.PluginQuit();
+    DeinitD3d();
+
+    offline::RunRenderWithProgress(api_orig_hinstance, hwnd, cfg);
+
+    g_plugin.PluginPreInitialize(0, 0);
+    if (!InitD3d(hwnd, width, height, false)) {
+        PostQuitMessage(0);
+        return;
+    }
+    g_plugin.PluginInitialize(pD3DDevice, &d3dPp, hwnd, width, height);
+}
 LRESULT CALLBACK StaticWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     switch(uMsg) {
         
@@ -228,6 +303,12 @@ LRESULT CALLBACK StaticWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
         }
 
         case WM_KEYDOWN: {
+            // MilkDrop's own 'r' binding arrives as WM_CHAR, and with Ctrl held that
+            // character is 0x12 rather than 'r', so Ctrl+R does not collide.
+            if (wParam == 'R' && (GetKeyState(VK_CONTROL) & 0x8000)) {
+                RenderCurrentPresetToVideo(hWnd);
+                return 0;
+            }
             /*if (playback && wParam >= VK_F1 && wParam <= VK_F8) {
                 switch (wParam) {
                 case VK_F1:
@@ -394,7 +475,8 @@ unsigned __stdcall CreateWindowAndRun(void* data) {
 
     g_plugin.PluginPreInitialize(0, 0);
     // InitD3d(hwnd, windowWidth, windowHeight);
-	InitD3d(hwnd, resolutionWidth, resolutionHeight);
+	if (!InitD3d(hwnd, resolutionWidth, resolutionHeight, false))
+		return 0;
 
     g_plugin.PluginInitialize(
         pD3DDevice,
@@ -679,6 +761,13 @@ int StartThreads(HINSTANCE instance) {
 #else
     int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine, int iCmdShow) {
         api_orig_hinstance = hInstance;
+
+        // A render is a headless, self-contained job: it drives the same plugin
+        // singleton the interactive path does, so the two never run together.
+        int exitCode = 0;
+        if (offline::TryRunCommandLine(hInstance, exitCode))
+            return exitCode;
+
         return StartThreads(hInstance);
     }
 #endif

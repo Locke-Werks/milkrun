@@ -154,6 +154,14 @@ private:
     int          m_frame;           // current frame #, starting at zero
     float        m_time;            // current animation time in seconds; starts at zero.
     float        m_fps;             // current estimate of frames per second
+
+    // OFFLINE RENDER MODE
+    // When on, the animation runs off a fixed timestep instead of the wall clock,
+    // so frame N always lands at exactly N/m_offline_fps seconds. Also suppresses
+    // the fps throttle, every text overlay, and Present; the caller reads the
+    // render target back itself.
+    bool         m_bOfflineMode;
+    float        m_offline_fps;
     HINSTANCE    m_hInstance;       // handle to application instance
     DXContext*   m_lpDX;            // pointer to DXContext object
     wchar_t      m_szPluginsDirPath[MAX_PATH];  // usually 'c:\\program files\\winamp\\plugins\\'
@@ -227,6 +235,13 @@ public:
     void PluginQuit();
 
     void ToggleHelp();
+
+    // Offline render mode: fFps is the exact target frame rate.
+    void SetOfflineMode(bool bEnable, float fFps);
+    // Silences everything the shell owns. Call late in init (from MyReadConfig)
+    // so it wins over both the compiled defaults and milk2.ini.
+    void ApplyOfflineOverrides();
+    bool IsOfflineMode() const { return m_bOfflineMode; }
 
 	void READ_FONT(int n);
 	void WRITE_FONT(int n);

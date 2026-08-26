@@ -1,0 +1,127 @@
+// Resources for the offline render dialogs. Kept out of plugin.rc, which holds
+// nothing but an icon, a text blob and the visualizer's string tables.
+
+#include <windows.h>
+#include <commctrl.h>
+#include "render_dialog_ids.h"
+
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version 6 common controls, for these dialogs only
+//
+// Resource id 1 is the one the loader applies to the whole process. This is id 2
+// and is reached through CreateActCtx instead, so the themed trackbar and
+// progress bar cost nothing anywhere else in the app.
+//
+
+IDR_RENDER_DIALOG_MANIFEST RT_MANIFEST
+BEGIN
+    "<?xml version=""1.0"" encoding=""UTF-8"" standalone=""yes""?>\r\n"
+    "<assembly xmlns=""urn:schemas-microsoft-com:asm.v1"" manifestVersion=""1.0"">\r\n"
+    "  <dependency>\r\n"
+    "    <dependentAssembly>\r\n"
+    "      <assemblyIdentity type=""win32"" name=""Microsoft.Windows.Common-Controls"" "
+    "version=""6.0.0.0"" processorArchitecture=""x86"" "
+    "publicKeyToken=""6595b64144ccf1df"" language=""*"" />\r\n"
+    "    </dependentAssembly>\r\n"
+    "  </dependency>\r\n"
+    "</assembly>\r\n"
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Render settings
+//
+
+IDD_RENDER_SETTINGS DIALOGEX 0, 0, 344, 340
+STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Render to Video"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    GROUPBOX        "Files", IDC_STATIC, 7, 7, 330, 68
+
+    LTEXT           "Preset", IDC_STATIC, 15, 23, 44, 8
+    EDITTEXT        IDC_RD_PRESET, 63, 20, 213, 13, ES_AUTOHSCROLL
+    PUSHBUTTON      "Browse...", IDC_RD_PRESET_BROWSE, 281, 20, 49, 13
+
+    LTEXT           "Song", IDC_STATIC, 15, 40, 44, 8
+    EDITTEXT        IDC_RD_AUDIO, 63, 37, 213, 13, ES_AUTOHSCROLL
+    PUSHBUTTON      "Browse...", IDC_RD_AUDIO_BROWSE, 281, 37, 49, 13
+
+    LTEXT           "Write to", IDC_STATIC, 15, 57, 44, 8
+    EDITTEXT        IDC_RD_OUTPUT, 63, 54, 213, 13, ES_AUTOHSCROLL
+    PUSHBUTTON      "Browse...", IDC_RD_OUTPUT_BROWSE, 281, 54, 49, 13
+
+    GROUPBOX        "Video", IDC_STATIC, 7, 80, 330, 142
+
+    LTEXT           "Size", IDC_STATIC, 15, 96, 44, 8
+    COMBOBOX        IDC_RD_SIZE, 63, 93, 90, 120, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    EDITTEXT        IDC_RD_WIDTH, 161, 93, 34, 13, ES_AUTOHSCROLL | ES_NUMBER
+    CTEXT           "x", IDC_STATIC, 197, 96, 8, 8
+    EDITTEXT        IDC_RD_HEIGHT, 207, 93, 34, 13, ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "pixels", IDC_STATIC, 247, 96, 40, 8
+
+    LTEXT           "Frame rate", IDC_STATIC, 15, 113, 44, 8
+    COMBOBOX        IDC_RD_FPS, 63, 110, 90, 120, CBS_DROPDOWN | CBS_AUTOHSCROLL | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "per second. 24000/1001 and 29.97 work too.", IDC_RD_FPS_HINT, 161, 113, 169, 8
+
+    LTEXT           "Quality", IDC_STATIC, 15, 128, 44, 8
+    CONTROL         "", IDC_RD_QUALITY, "msctls_trackbar32", TBS_AUTOTICKS | TBS_BOTTOM | WS_TABSTOP, 61, 124, 180, 22
+    LTEXT           "", IDC_RD_QUALITY_TEXT, 247, 128, 83, 8
+    LTEXT           "Smaller file", IDC_STATIC, 65, 146, 60, 8
+    RTEXT           "Better quality", IDC_STATIC, 177, 146, 60, 8
+
+    LTEXT           "Precision", IDC_STATIC, 15, 163, 44, 8
+    AUTORADIOBUTTON "&Faithful: 8-bit canvas, exactly the live look",
+                    IDC_RD_PREC_FAITHFUL, 63, 161, 267, 10, WS_GROUP | WS_TABSTOP
+    AUTORADIOBUTTON "&High precision: float canvas into a 10-bit back buffer",
+                    IDC_RD_PREC_HIGH, 63, 174, 267, 10
+    AUTOCHECKBOX    "HDR&10 output: BT.2020 primaries with the PQ curve",
+                    IDC_RD_PQ2020, 76, 188, 254, 10
+
+    LTEXT           "Encoder", IDC_STATIC, 15, 206, 44, 8
+    COMBOBOX        IDC_RD_ENCODER, 63, 203, 140, 120, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+
+    GROUPBOX        "Section", IDC_STATIC, 7, 227, 330, 44
+    AUTOCHECKBOX    "Render only part of the song", IDC_RD_SECTION, 15, 240, 130, 10
+    LTEXT           "Start", IDC_RD_START_LABEL, 152, 241, 20, 8
+    EDITTEXT        IDC_RD_START, 174, 238, 50, 13, ES_AUTOHSCROLL
+    LTEXT           "Length", IDC_RD_DURATION_LABEL, 232, 241, 26, 8
+    EDITTEXT        IDC_RD_DURATION, 262, 238, 50, 13, ES_AUTOHSCROLL
+    LTEXT           "Seconds or mm:ss. Leave the length blank to run to the end of the song.",
+                    IDC_RD_SECTION_HINT, 15, 256, 315, 8
+
+    LTEXT           "", IDC_RD_SUMMARY, 7, 276, 330, 9, SS_ENDELLIPSIS
+
+    // Three lines, because the decoder reports what a file actually is when it
+    // cannot read it, and that sentence is the whole point of the message.
+    LTEXT           "", IDC_RD_WARNING, 7, 287, 330, 27
+
+    DEFPUSHBUTTON   "&Render", IDOK, 227, 319, 54, 14
+    PUSHBUTTON      "Cancel", IDCANCEL, 285, 319, 52, 14
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Render progress
+//
+
+IDD_RENDER_PROGRESS DIALOGEX 0, 0, 272, 112
+STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Rendering"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    LTEXT           "", IDC_RP_HEADING, 10, 10, 252, 9, SS_ENDELLIPSIS
+    LTEXT           "", IDC_RP_FILE, 10, 22, 252, 9, SS_PATHELLIPSIS
+    CONTROL         "", IDC_RP_BAR, "msctls_progress32", PBS_SMOOTH, 10, 38, 252, 12
+    LTEXT           "", IDC_RP_FRAMES, 10, 56, 140, 9
+    RTEXT           "", IDC_RP_RATE, 152, 56, 110, 9
+    LTEXT           "", IDC_RP_ELAPSED, 10, 69, 140, 9
+    RTEXT           "", IDC_RP_REMAIN, 152, 69, 110, 9
+    AUTOCHECKBOX    "&Play the file when it is done", IDC_RP_PLAY, 10, 91, 150, 10
+    PUSHBUTTON      "Cancel", IDCANCEL, 210, 89, 52, 14
+END

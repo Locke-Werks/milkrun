@@ -51,7 +51,7 @@
     <GenerateManifest>false</GenerateManifest>
     <IncludePath>$(ProjectDir)..\third_party\d3dx9\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(ProjectDir)..\third_party\d3dx9\lib\x86;$(LibraryPath)</LibraryPath>
-    <TargetName>MilkDrop 3</TargetName>
+    <TargetName>MilkRun</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <OutDir>.\Debug\</OutDir>
@@ -189,6 +189,17 @@ xcopy "$(ProjectDir)..\third_party\d3dx9\bin\x86\*.dll" "$(OutDir)" /Y</Command>
     <ClCompile Include="fft.cpp" />
     <ClCompile Include="menu.cpp" />
     <ClCompile Include="Milkdrop2PcmVisualizer.cpp" />
+    <ClCompile Include="offline\audio_source.cpp" />
+    <ClCompile Include="offline\mf_encoder.cpp" />
+    <ClCompile Include="offline\player_window.cpp" />
+    <ClCompile Include="offline\render_dialog.cpp" />
+    <ClCompile Include="offline\wav_reader.cpp" />
+    <ClCompile Include="offline\cli.cpp" />
+    <ClCompile Include="offline\frame_grabber.cpp" />
+    <ClCompile Include="offline\mp4_muxer.cpp" />
+    <ClCompile Include="offline\nvenc_encoder.cpp" />
+    <ClCompile Include="offline\pq_post.cpp" />
+    <ClCompile Include="offline\render_job.cpp" />
     <ClCompile Include="milkdropfs.cpp" />
     <ClCompile Include="plugin.cpp" />
     <ClCompile Include="pluginshell.cpp" />
@@ -209,6 +220,21 @@ xcopy "$(ProjectDir)..\third_party\d3dx9\bin\x86\*.dll" "$(OutDir)" /Y</Command>
     <ClInclude Include="..\audio\log.h" />
     <ClInclude Include="..\audio\loopback-capture.h" />
     <ClInclude Include="..\audio\prefs.h" />
+    <ClInclude Include="app_device.h" />
+    <ClInclude Include="offline\audio_source.h" />
+    <ClInclude Include="offline\mf_encoder.h" />
+    <ClInclude Include="offline\player_window.h" />
+    <ClInclude Include="offline\render_dialog.h" />
+    <ClInclude Include="offline\render_dialog_ids.h" />
+    <ClInclude Include="offline\wav_reader.h" />
+    <ClInclude Include="offline\cli.h" />
+    <ClInclude Include="offline\frame_grabber.h" />
+    <ClInclude Include="offline\mp4_muxer.h" />
+    <ClInclude Include="offline\nvenc_encoder.h" />
+    <ClInclude Include="offline\pq_post.h" />
+    <ClInclude Include="offline\video_encoder.h" />
+    <ClInclude Include="offline\render_config.h" />
+    <ClInclude Include="offline\render_job.h" />
     <ClInclude Include="AutoCharFn.h" />
     <ClInclude Include="AutoWide.h" />
     <ClInclude Include="defines.h" />

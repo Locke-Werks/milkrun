@@ -1024,6 +1024,8 @@ void CPlugin::MyPreInitialize()
 	m_fStartTime	= 0.0f;
 	m_fPresetStartTime = 0.0f;
 	m_fNextPresetTime  = -1.0f;	// negative value means no time set (...it will be auto-set on first call to UpdateTime)
+    m_pPqPost = NULL;
+    m_szOfflinePreset[0] = 0;
     m_nLoadingPreset   = 0;
     m_nPresetsLoadedTotal = 0;
     m_fSnapPoint = 0.5f;
@@ -1221,7 +1223,7 @@ void CPlugin::MyReadConfig()
 
     // --------
 
-	GetPrivateProfileStringW(L"settings",L"szPresetDir",m_szPresetDir,m_szPresetDir,sizeof(m_szPresetDir),pIni);
+	GetPrivateProfileStringW(L"settings",L"szPresetDir",m_szPresetDir,m_szPresetDir,ARRAYSIZE(m_szPresetDir),pIni);
 
 	ReadCustomMessages();
 
@@ -1238,6 +1240,36 @@ void CPlugin::MyReadConfig()
     // DERIVED SETTINGS
     m_bPresetLockedByUser      = m_bPresetLockOnAtStartup;
     //m_bMilkdropScrollLockState = m_bPresetLockOnAtStartup;
+
+    // OFFLINE RENDER OVERRIDES
+    // This runs last in the init chain (OverrideDefaults -> ReadConfig ->
+    // MyPreInitialize -> MyReadConfig), so it wins over both the compiled
+    // defaults and whatever the user has in milk2.ini.
+    if (IsOfflineMode())
+    {
+        ApplyOfflineOverrides();   // the shell's own overlays and throttles
+
+        m_bShowFPS = m_bShowRating = m_bShowPresetInfo = m_bShowDebugInfo = false;
+        m_bShowSongTitle = m_bShowSongTime = m_bShowSongLen = false;
+        m_bWarningsDisabled2 = true;
+        m_UI_mode = UI_REGULAR;
+
+        // The song title animation is drawn inside MyRenderFn and warped into the
+        // canvas itself, so skipping the overlay pass in DrawAndDisplay does not
+        // suppress it. These do.
+        m_bSongTitleAnims = false;
+        m_fTimeBetweenRandomSongTitles = -1.0f;
+        m_fTimeBetweenRandomCustomMsgs = -1.0f;
+        m_supertext.fStartTime = -1.0f;
+
+        // One preset for the whole render. Deliberately NOT via
+        // m_bPresetLockedByUser: that path reassigns m_fPresetStartTime every
+        // frame, which pins preset-local time at zero and freezes var_pf_progress.
+        // Preset switching is gated on IsOfflineMode() at its decision points.
+        m_bPresetLockedByUser = false;
+        m_bHardCutsDisabled = true;
+        m_fTimeBetweenPresetsRand = 0.0f;
+    }
 }
 
 //----------------------------------------------------------------------
@@ -2377,8 +2409,18 @@ int CPlugin::AllocateMyDX9Stuff()
 
     if (!m_bInitialPresetSelected)
     {
-		UpdatePresetList(true); //...just does its initial burst!
-        LoadRandomPreset(0.0f);
+        if (IsOfflineMode() && m_szOfflinePreset[0])
+        {
+            // Offline runs one chosen preset, so skip the directory scan and the
+            // random pick. Blend time 0 takes LoadPreset's synchronous path, so the
+            // preset and its compiled shaders are fully live when this returns.
+            LoadPreset(m_szOfflinePreset, 0.0f);
+        }
+        else
+        {
+            UpdatePresetList(true); //...just does its initial burst!
+            LoadRandomPreset(0.0f);
+        }
         m_bInitialPresetSelected = true;
     }
     else
@@ -3935,36 +3977,41 @@ void CPlugin::MyRenderFn(int redraw)
         //    UpdatePresetList(true);//UpdatePresetRatings(); // read in a few each frame, til they're all in
     }
 
-    m_bHadFocus = m_bHasFocus;
-
-    HWND plugin = GetPluginWindow();
-    HWND focus = GetFocus();
-    HWND cur = plugin;
-
-    m_bHasFocus = false;
-    do
+    // Offline has no window to focus and no song title to announce, and the title
+    // animation would be drawn into the canvas itself.
+    if (!IsOfflineMode())
     {
-        m_bHasFocus = (focus == cur);
-        if (m_bHasFocus)
-            break;
-        cur = GetParent(cur);
-    }
-    while (cur != NULL);
+        m_bHadFocus = m_bHasFocus;
 
-    if (m_hTextWnd && focus==m_hTextWnd)
-        m_bHasFocus = 1;
+        HWND plugin = GetPluginWindow();
+        HWND focus = GetFocus();
+        HWND cur = plugin;
 
-    if (GetFocus()==NULL)
-        m_bHasFocus = 0;
-
-    if (!redraw)
-    {
-        GetSongTitle(m_szSongTitle, sizeof(m_szSongTitle)-1);
-        if (wcscmp(m_szSongTitle, m_szSongTitlePrev))
+        m_bHasFocus = false;
+        do
         {
-            lstrcpynW(m_szSongTitlePrev, m_szSongTitle, 512);
-            if (m_bSongTitleAnims)
-                LaunchSongTitleAnim();
+            m_bHasFocus = (focus == cur);
+            if (m_bHasFocus)
+                break;
+            cur = GetParent(cur);
+        }
+        while (cur != NULL);
+
+        if (m_hTextWnd && focus==m_hTextWnd)
+            m_bHasFocus = 1;
+
+        if (GetFocus()==NULL)
+            m_bHasFocus = 0;
+
+        if (!redraw)
+        {
+            GetSongTitle(m_szSongTitle, sizeof(m_szSongTitle)-1);
+            if (wcscmp(m_szSongTitle, m_szSongTitlePrev))
+            {
+                lstrcpynW(m_szSongTitlePrev, m_szSongTitle, 512);
+                if (m_bSongTitleAnims)
+                    LaunchSongTitleAnim();
+            }
         }
     }
 

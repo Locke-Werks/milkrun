@@ -1394,15 +1394,21 @@ void CPluginShell::DrawAndDisplay(int redraw)
 	{
 		MyRenderFn(redraw);
 
-		PrepareFor2DDrawing_B(GetDevice(), GetWidth(), GetHeight());
+		// An offline render wants the visualization and nothing else. Note this
+		// is not sufficient on its own: the song title animation is drawn inside
+		// MyRenderFn, so it is suppressed by its own flags in MyReadConfig.
+		if (!m_bOfflineMode)
+		{
+			PrepareFor2DDrawing_B(GetDevice(), GetWidth(), GetHeight());
 
-		if (!m_vjd3d9_device)   // in VJ mode, this renders to different context, so do it after BeginScene() on 2nd device.
-			RenderBuiltInTextMsgs();    // to m_lpDDSText?
-		MyRenderUI(&m_upper_left_corner_y, &m_upper_right_corner_y, &m_lower_left_corner_y, &m_lower_right_corner_y, m_left_edge, m_right_edge);
-		RenderPlaylist();
+			if (!m_vjd3d9_device)   // in VJ mode, this renders to different context, so do it after BeginScene() on 2nd device.
+				RenderBuiltInTextMsgs();    // to m_lpDDSText?
+			MyRenderUI(&m_upper_left_corner_y, &m_upper_right_corner_y, &m_lower_left_corner_y, &m_lower_right_corner_y, m_left_edge, m_right_edge);
+			RenderPlaylist();
 
-		if (!m_vjd3d9_device)
-			m_text.DrawNow();
+			if (!m_vjd3d9_device)
+				m_text.DrawNow();
+		}
 
 		m_lpDX->m_lpDevice->EndScene();
 	}
@@ -1423,6 +1429,11 @@ void CPluginShell::DrawAndDisplay(int redraw)
 
 		m_vjd3d9_device->EndScene();
 	}
+
+	// Offline: leave the frame in the back buffer for the caller to read back.
+	// Swap effect is D3DSWAPEFFECT_COPY, so its contents survive until overwritten.
+	if (m_bOfflineMode)
+		return;
 
 	if (m_lpDX->m_client_width != m_lpDX->m_REAL_client_width || m_lpDX->m_client_height != m_lpDX->m_REAL_client_height)
 	{
@@ -1446,6 +1457,9 @@ void CPluginShell::DrawAndDisplay(int redraw)
 
 void CPluginShell::EnforceMaxFPS()
 {
+	// Offline renders as fast as the GPU allows; the timestep is fixed in DoTime.
+	if (m_bOfflineMode)
+		return;
 	int max_fps = m_max_fps_w;
 
 	if (max_fps <= 0)
@@ -1554,6 +1568,26 @@ void CPluginShell::EnforceMaxFPS()
 
 void CPluginShell::DoTime()
 {
+	if (m_bOfflineMode)
+	{
+		// Fixed timestep: frame N is exactly N/fps seconds in, however long the
+		// frame actually took to render. Deriving m_time from the frame index
+		// rather than accumulating avoids any drift over a long render.
+		m_fps  = m_offline_fps;
+		m_time = m_frame / m_offline_fps;
+
+		// Keep the history consistent with that cadence so nothing sampling it
+		// sees leftover wall-clock values.
+		if (m_frame == 0)
+		{
+			for (int i = 0; i < TIME_HIST_SLOTS; i++)
+				m_time_hist[i] = 0.0f;
+			m_time_hist_pos = 0;
+		}
+		m_time_hist[m_time_hist_pos] = m_time;
+		m_time_hist_pos = (m_time_hist_pos + 1) % TIME_HIST_SLOTS;
+		return;
+	}
 	if (m_frame==0)
 	{
 		m_fps = 60;
@@ -2306,6 +2340,28 @@ LRESULT CPluginShell::PluginShellWindowProc(HWND hWnd, unsigned uMsg, WPARAM wPa
 	return MyWindowProc(hWnd, uMsg, wParam, lParam);
 }
 
+void CPluginShell::SetOfflineMode(bool bEnable, float fFps)
+{
+	m_bOfflineMode = bEnable;
+	m_offline_fps  = (fFps > 0.0f) ? fFps : 60.0f;
+}
+void CPluginShell::ApplyOfflineOverrides()
+{
+	if (!m_bOfflineMode)
+		return;
+
+	m_max_fps_w         = 0;   // no throttling; DoTime owns the timestep
+	m_max_fps_fs        = 0;
+	m_max_fps_dm        = 0;
+	m_save_cpu          = 0;
+	m_show_press_f1_msg = 0;
+	m_show_help         = 0;
+	m_show_playlist     = 0;
+	m_fix_slow_text     = 0;
+	// A stray vj_mode=1 in milk2.ini would otherwise spawn a second window and a
+	// second D3D device, and would redirect DrawAndDisplay's canvas dimensions.
+	m_vj_mode           = 0;
+}
 void CPluginShell::ToggleHelp()
 {
     m_show_help = 1 - m_show_help;
