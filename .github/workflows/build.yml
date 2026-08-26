@@ -18,6 +18,12 @@ jobs:
       # D3DX9 is not in the repository: Microsoft's terms allow shipping the
       # redistributable DLLs inside an application, but not publishing the
       # headers and import library.
+      # Forge leaves an unknown token in the string rather than failing, so a
+      # typo installs to the wrong place instead of erroring. 0.2.0 shipped that
+      # way.
+      - name: Check installer config
+        shell: pwsh
+        run: ./scripts/check-installer-config.ps1
       - name: Fetch dependencies
         shell: pwsh
         run: ./scripts/fetch-deps.ps1

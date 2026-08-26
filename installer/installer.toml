@@ -1,6 +1,6 @@
 [product]
 name         = "Milk Run"
-version      = "0.2.0"
+version      = "0.2.1"
 publisher    = "Locke Werks"
 description  = "Renders a MilkDrop preset to video, in sync with a song"
 copyright    = "Copyright (c) Locke Werks. Based on MilkDrop 3 by milkdrop2077 and BeatDrop by Maxim Volskiy. BSD 3-Clause."
@@ -11,7 +11,7 @@ aumid        = "LockeWerks.MilkRun"
 
 [install]
 scope = "machine"
-dir   = "{pf}\\Milk Run"
+dir   = "{ProgramFiles}\\Milk Run"
 
 [ui]
 license_text = """
@@ -60,12 +60,12 @@ label = "Put a shortcut on the desktop"
 
 [[actions]]
 type = "shortcut"
-target = "{app}\\MilkRun.exe"
+target = "{InstallDir}\\MilkRun.exe"
 name = "Milk Run"
 
 [[actions]]
 type = "shortcut"
-target = "{app}\\MilkRun.exe"
+target = "{InstallDir}\\MilkRun.exe"
 where = "desktop"
 name = "Milk Run"
 when = "desktop_shortcut"
