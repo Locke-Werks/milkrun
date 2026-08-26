@@ -1,0 +1,39 @@
+# Build output
+code/vis_milk2/Release/
+[Dd]ebug/
+[Rr]elease/
+*.obj
+*.res
+*.pdb
+*.ilk
+*.exp
+*.idb
+*.tlog
+*.recipe
+*.lastbuildstate
+*.FileListAbsolute.txt
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.sdf
+*.opensdf
+*.VC.db
+*.VC.opendb
+
+# Runtime
+milk2.ini
+milk2_msg.ini
+milk2_img.ini
+
+# Agent worktrees and session state
+.claude/
+
+# Test audio dropped in for rendering, not part of the project
+drone-vgm.*
+
+# Local commit staging helpers
+.commit_stash/
+.vcxproj.final
+.rc.final
