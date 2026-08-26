@@ -21,6 +21,9 @@
 #include "offline/cli.h"
 #include "offline/render_dialog.h"
 #include "offline/settings_dialog.h"
+#include "offline/control_bar.h"
+#include "offline/player_window.h"
+#include <commdlg.h>
 #include "resource.h"
 
 #include <mutex>
@@ -66,6 +69,7 @@ static unsigned char pcmRightOut[SAMPLE_SIZE];
 //static musik::core::sdk::IPlaybackService* playback = nullptr;
 
 static HICON icon = nullptr;
+static app::ControlBar g_controlBar;
 
 // Pick the adapter to render on. Machines commonly expose a virtual display
 // adapter (remote desktop, capture drivers) alongside the real GPU, and it sorts
@@ -255,6 +259,30 @@ void ToggleFullScreen(HWND hwnd) {
      stretch = false;
 }
 
+// Opens a finished render in the built-in player. Separate from the render flow
+// on purpose: people want to re-watch yesterday's output without rendering again.
+static void PlayAVideoFile(HWND hwnd) {
+    wchar_t path[MAX_PATH];
+    path[0] = 0;
+
+    OPENFILENAMEW ofn;
+    ZeroMemory(&ofn, sizeof(ofn));
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner   = hwnd;
+    ofn.lpstrFilter = L"Video files\0*.mp4;*.mkv;*.mov;*.m4v\0All files\0*.*\0";
+    ofn.lpstrFile   = path;
+    ofn.nMaxFile    = ARRAYSIZE(path);
+    ofn.lpstrTitle  = L"Play a video";
+    ofn.Flags       = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_EXPLORER;
+
+    if (!GetOpenFileNameW(&ofn))
+        return;
+
+    std::wstring error;
+    if (!offline::PlayFile(api_orig_hinstance, path, 60, 1, error))
+        MessageBoxW(hwnd, error.c_str(), L"Milk Run", MB_OK | MB_ICONWARNING);
+}
+
 // Ctrl+R renders the running preset to a file. The offline job drives this same
 // CPlugin and the same D3D globals the live session holds, so the two can never
 // overlap. The settings dialog runs first, while the session is merely paused;
@@ -287,6 +315,38 @@ LRESULT CALLBACK StaticWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
     switch(uMsg) {
         
         //BeatDrop2077 DoubleClick = fullscreen on/off
+        case WM_COMMAND:
+            switch (LOWORD(wParam)) {
+            case app::ControlBar::CmdRender:
+                RenderCurrentPresetToVideo(hWnd);
+                return 0;
+            case app::ControlBar::CmdSettings:
+                app::ShowSettingsDialog(api_orig_hinstance, hWnd);
+                return 0;
+            case app::ControlBar::CmdPresets:
+                // The preset browser the visualizer already draws. Reaching it by
+                // a button rather than by knowing to press L is the point here.
+                g_plugin.PluginShellWindowProc(hWnd, WM_KEYDOWN, 'L', 0);
+                g_plugin.PluginShellWindowProc(hWnd, WM_CHAR, 'l', 0);
+                return 0;
+            case app::ControlBar::CmdPlay:
+                PlayAVideoFile(hWnd);
+                return 0;
+            case app::ControlBar::CmdHelp:
+                g_plugin.PluginShellWindowProc(hWnd, WM_KEYDOWN, VK_F1, 0);
+                return 0;
+            }
+            break;
+
+        case WM_MOVE:
+        case WM_SIZE:
+            g_controlBar.Reposition();
+            break;
+
+        case WM_MOUSEMOVE:
+            g_controlBar.NotifyMouseActivity();
+            break;
+
 	    case WM_LBUTTONDBLCLK:
 		ToggleFullScreen(hWnd);
 		break;    
@@ -299,6 +359,7 @@ LRESULT CALLBACK StaticWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
         }
 
         case WM_DESTROY: {
+            g_controlBar.Destroy();
             PostQuitMessage(0);
             break;
         }
@@ -495,6 +556,10 @@ unsigned __stdcall CreateWindowAndRun(void* data) {
         // windowHeight);
 		resolutionWidth,
 		resolutionHeight);
+
+    // Buttons rather than hidden chords: nothing about this app announces that a
+    // render is a keystroke away, and a visualizer window has no other chrome.
+    g_controlBar.Create(instance, hwnd);
 
     MSG msg;
     msg.message = WM_NULL;

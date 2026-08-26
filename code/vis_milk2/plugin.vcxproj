@@ -195,6 +195,7 @@ xcopy "$(ProjectDir)..\third_party\d3dx9\bin\x86\*.dll" "$(OutDir)" /Y</Command>
     <ClCompile Include="offline\render_dialog.cpp" />
     <ClCompile Include="offline\settings_dialog.cpp" />
     <ClCompile Include="offline\wav_reader.cpp" />
+    <ClCompile Include="offline\control_bar.cpp" />
     <ClCompile Include="offline\cli.cpp" />
     <ClCompile Include="offline\frame_grabber.cpp" />
     <ClCompile Include="offline\mp4_muxer.cpp" />
@@ -230,6 +231,7 @@ xcopy "$(ProjectDir)..\third_party\d3dx9\bin\x86\*.dll" "$(OutDir)" /Y</Command>
     <ClInclude Include="offline\settings_dialog_ids.h" />
     <ClInclude Include="offline\render_dialog_ids.h" />
     <ClInclude Include="offline\wav_reader.h" />
+    <ClInclude Include="offline\control_bar.h" />
     <ClInclude Include="offline\cli.h" />
     <ClInclude Include="offline\frame_grabber.h" />
     <ClInclude Include="offline\mp4_muxer.h" />
