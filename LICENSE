@@ -1,0 +1,54 @@
+BSD 3-Clause License
+
+Copyright (c) 2018 Maxim Volskiy and individual contributors
+Copyright (c) 2023 milkdrop2077
+Copyright (c) 2026 Locke Werks
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
+
+* Neither the name of the copyright holder nor the names of its
+  contributors may be used to endorse or promote products derived from
+  this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+---
+
+THIRD PARTY COMPONENTS
+
+NS-EEL2 (code/ns-eel2)
+    The Nullsoft Expression Evaluator Library, which compiles the per-frame and
+    per-pixel equations in MilkDrop presets. Copyright (c) Nullsoft, Inc. Its
+    own notice is retained in the source files.
+
+NVIDIA Video Codec SDK headers (code/third_party/nvenc)
+    nvEncodeAPI.h, redistributed under the permissive terms in
+    code/third_party/nvenc/LICENSE.txt. The encoder itself is loaded at run time
+    from the installed NVIDIA driver and is not distributed here.
+
+Microsoft DXSDK.D3DX
+    Not included in this repository. Its headers and import library are SDK
+    components that Microsoft's terms do not permit republishing, so
+    scripts/fetch-deps.ps1 downloads them from Microsoft's own NuGet package at
+    build time. The two redistributable DLLs, D3DX9_43.dll and
+    D3DCompiler_43.dll, are distributable code and ship inside the installer
+    under section 3 of those terms.

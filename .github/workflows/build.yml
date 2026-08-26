@@ -1,0 +1,114 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: microsoft/setup-msbuild@v2
+
+      # D3DX9 is not in the repository: Microsoft's terms allow shipping the
+      # redistributable DLLs inside an application, but not publishing the
+      # headers and import library.
+      - name: Fetch dependencies
+        shell: pwsh
+        run: ./scripts/fetch-deps.ps1
+
+      - name: Build
+        shell: pwsh
+        run: |
+          msbuild code\MilkDrop3.sln `
+            -p:Configuration=Release -p:Platform=Win32 -m -v:minimal -nologo
+
+      - name: Check what was produced
+        shell: pwsh
+        run: |
+          $exe = 'code\vis_milk2\Release\MilkRun.exe'
+          if (-not (Test-Path $exe)) { throw "no MilkRun.exe" }
+
+          $vi = (Get-Item $exe).VersionInfo
+          "product : $($vi.ProductName)"
+          "version : $($vi.FileVersion)"
+          if ($vi.ProductName -ne 'Milk Run') { throw "version resource says '$($vi.ProductName)'" }
+
+          # x86 is not a preference: the NS-EEL expression evaluator that runs
+          # preset equations JITs x86 machine code and has no x64 path. A build
+          # that somehow came out x64 would fail at the first preset.
+          $fs = [IO.File]::OpenRead((Resolve-Path $exe))
+          $br = New-Object IO.BinaryReader($fs)
+          $fs.Position = 0x3C
+          $fs.Position = $br.ReadUInt32() + 4
+          $machine = $br.ReadUInt16()
+          $br.Dispose()
+          "machine : 0x{0:X4}" -f $machine
+          if ($machine -ne 0x14C) { throw "expected x86 (0x14C), got 0x$('{0:X4}' -f $machine)" }
+
+          # The .fx shaders are mandatory at run time; a missing one pops a
+          # message box and dies, which is not something to discover on a user's
+          # machine.
+          $fx = Get-ChildItem 'code\vis_milk2\Release\plugins\Milkdrop2\data\*.fx'
+          "shaders : $($fx.Count)"
+          if ($fx.Count -ne 8) { throw "expected 8 .fx files beside the exe, found $($fx.Count)" }
+
+      # Runners have no GPU, so a render cannot be exercised here. The audio
+      # front end can: this is the case that used to fail, because Media
+      # Foundation refuses PCM wider than 32-bit float and a 64-bit float WAV is
+      # an ordinary DAW export.
+      - name: Decode a 64-bit float WAV
+        shell: pwsh
+        run: |
+          $rate = 48000; $seconds = 2
+          $n = $rate * $seconds
+          $ms = New-Object IO.MemoryStream
+          $w  = New-Object IO.BinaryWriter($ms)
+          $dataBytes = $n * 2 * 8
+
+          $w.Write([char[]]'RIFF'); $w.Write([uint32](36 + $dataBytes)); $w.Write([char[]]'WAVE')
+          $w.Write([char[]]'fmt '); $w.Write([uint32]16)
+          $w.Write([uint16]3)                 # WAVE_FORMAT_IEEE_FLOAT
+          $w.Write([uint16]2)                 # stereo
+          $w.Write([uint32]$rate)
+          $w.Write([uint32]($rate * 2 * 8))   # bytes per second
+          $w.Write([uint16]16)                # block align
+          $w.Write([uint16]64)                # bits per sample
+          $w.Write([char[]]'data'); $w.Write([uint32]$dataBytes)
+
+          # Full scale 1 kHz, so the reported peak is unambiguous.
+          for ($i = 0; $i -lt $n; $i++) {
+            $v = [double][math]::Sin(2 * [math]::PI * 1000 * $i / $rate)
+            $w.Write($v); $w.Write($v)
+          }
+          $w.Flush()
+          [IO.File]::WriteAllBytes("$PWD\ci-tone.wav", $ms.ToArray())
+
+          $out = & 'code\vis_milk2\Release\MilkRun.exe' --probe-audio "$PWD\ci-tone.wav" --fps 60 --from 0 --to 4 2>&1 | Out-String
+          $out
+          if ($LASTEXITCODE -ne 0) { throw "probe exited $LASTEXITCODE" }
+
+          # 44100 Hz out of 48000 Hz in, so the resampler ran too.
+          if ($out -notmatch '120 frames at 60') { throw "expected 120 frames for 2 seconds at 60 fps" }
+
+          # Full scale maps to 127 in the 8-bit form the visualizer consumes.
+          # Anything far below means the decode or the resampler is wrong.
+          $peaks = [regex]::Matches($out, '^\s+\d+\s+[\d.]+\s+(\d+)\s+(\d+)\s*$', 'Multiline')
+          if ($peaks.Count -eq 0) { throw "no per-frame peaks in the probe output" }
+          $worst = ($peaks | ForEach-Object { [int]$_.Groups[1].Value } | Measure-Object -Minimum).Minimum
+          "lowest peak across the window: $worst"
+          if ($worst -lt 120) { throw "a full scale tone should peak near 127, got $worst" }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MilkRun-win32
+          path: |
+            code/vis_milk2/Release/MilkRun.exe
+            code/vis_milk2/Release/*.dll
+            code/vis_milk2/Release/plugins/**
+          if-no-files-found: error

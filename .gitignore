@@ -41,3 +41,6 @@ drone-vgm.*
 # Installer build output; installer.toml is tracked, the artifacts are not
 installer/payload/
 installer/*-Setup.exe
+
+# Fetched by scripts/fetch-deps.ps1; Microsoft terms do not allow publishing it
+code/third_party/d3dx9/

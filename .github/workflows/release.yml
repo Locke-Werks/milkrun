@@ -1,0 +1,162 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to build and publish
+        required: true
+
+env:
+  # Pinned so a Forge release cannot change what this job produces without
+  # someone choosing it. v0.3.0 is also the floor: [[options]] and `when` are
+  # silently ignored by older builds rather than rejected, which inverts them
+  # instead of disabling them.
+  FORGE_VERSION: v0.3.0
+
+jobs:
+  release:
+    runs-on: windows-latest
+    environment: release
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: microsoft/setup-msbuild@v2
+
+      - name: Fetch dependencies
+        shell: pwsh
+        run: ./scripts/fetch-deps.ps1
+
+      - name: Build
+        shell: pwsh
+        run: |
+          msbuild code\MilkDrop3.sln `
+            -p:Configuration=Release -p:Platform=Win32 -m -v:minimal -nologo
+
+      # Everything under stage/ lands on the user's disk byte for byte.
+      - name: Stage the payload
+        shell: pwsh
+        run: |
+          $rel = 'code\vis_milk2\Release'
+          New-Item -ItemType Directory -Force -Path stage\plugins\Milkdrop2\data | Out-Null
+          New-Item -ItemType Directory -Force -Path stage\plugins\Milkdrop2\presets | Out-Null
+          New-Item -ItemType Directory -Force -Path stage\plugins\Milkdrop2\textures | Out-Null
+
+          Copy-Item "$rel\MilkRun.exe" stage\
+          Copy-Item "$rel\D3DX9_43.dll" stage\
+          Copy-Item "$rel\D3DCompiler_43.dll" stage\
+          Copy-Item code\resources\Milkdrop2\data\*.fx stage\plugins\Milkdrop2\data\
+          Copy-Item LICENSE stage\LICENSE.txt
+
+          # No presets ship: the library is community content under its own
+          # terms. The folders exist so the app has somewhere to look.
+          Copy-Item installer\presets-README.txt  stage\plugins\Milkdrop2\presets\README.txt
+          Copy-Item installer\textures-README.txt stage\plugins\Milkdrop2\textures\README.txt
+
+      # Before forging, not after. Forge hashes payload members into the
+      # container and extracts them verbatim, so an unsigned binary going in
+      # stays unsigned on the installed machine; signing the finished installer
+      # does nothing for them.
+      - name: Sign the payload
+        uses: azure/trusted-signing-action@v0
+        with:
+          azure-tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          azure-client-id: ${{ vars.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: https://eus.codesigning.azure.net
+          trusted-signing-account-name: specterpoint
+          certificate-profile-name: specterpoint
+          files-folder: stage
+          files-folder-filter: exe
+          files-folder-recurse: true
+          file-digest: SHA256
+          # Certificates are valid for three days, so without a timestamp the
+          # signature stops validating within the week.
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      # lwstub.exe ships signed in the release, and it becomes the embedded
+      # uninstaller verbatim, so taking it from there avoids a second signing
+      # pass. Forge is public; the default token is enough.
+      - name: Fetch Forge
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download $env:FORGE_VERSION --repo Locke-Werks/Forge `
+            --pattern '*.exe' --dir tools
+          foreach ($name in 'lwforge.exe', 'lwstub.exe') {
+            $sig = Get-AuthenticodeSignature "tools/$name"
+            "$name : $($sig.Status)"
+            if ($sig.Status -ne 'Valid') { throw "tools/$name is $($sig.Status)" }
+          }
+
+      - name: Forge the installer
+        shell: pwsh
+        run: |
+          $tag = if ($env:GITHUB_REF_NAME -like 'v*') { $env:GITHUB_REF_NAME } else { '${{ inputs.tag }}' }
+          $version = $tag.TrimStart('v')
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          "MILKRUN_SETUP=dist/MilkRun-$version-Setup.exe" | Out-File -Append $env:GITHUB_ENV
+
+          # No --sign: that flag shells out to a script that only exists in the
+          # Forge repo. Signing is the separate step below.
+          ./tools/lwforge.exe build `
+            --config installer/installer.toml `
+            --payload stage `
+            --stub tools/lwstub.exe `
+            --out "dist/MilkRun-$version-Setup.exe"
+
+      # Last, after resource stamping and the container append have rewritten
+      # the image. Data appended before the certificate table is inside the
+      # Authenticode digest, so the payload ends up under the signature.
+      - name: Sign the installer
+        uses: azure/trusted-signing-action@v0
+        with:
+          azure-tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          azure-client-id: ${{ vars.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: https://eus.codesigning.azure.net
+          trusted-signing-account-name: specterpoint
+          certificate-profile-name: specterpoint
+          files-folder: dist
+          files-folder-filter: exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Verify
+        shell: pwsh
+        run: |
+          $setup = $env:MILKRUN_SETUP
+          $sig = Get-AuthenticodeSignature $setup
+          "installer: $($sig.Status)  $($sig.SignerCertificate.Subject)"
+          if ($sig.Status -ne 'Valid') { throw "installer is $($sig.Status)" }
+
+          # Signing appended a certificate table after the container. This is
+          # the check that proves it did not orphan the payload.
+          ./tools/lwforge.exe inspect $setup
+          if ($LASTEXITCODE -ne 0) { throw "the signed installer cannot read its own container" }
+
+          # Catches a /O: switch the installer no longer declares. The exit code
+          # alone cannot distinguish that from a preflight the runner fails, so
+          # print the report either way.
+          $report = & $setup --check-only /O:desktop_shortcut=off 2>&1 | Out-String
+          $report
+          if ($LASTEXITCODE -ne 0) { throw "check-only exited $LASTEXITCODE`n$report" }
+
+      - name: Publish
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = if ($env:GITHUB_REF_NAME -like 'v*') { $env:GITHUB_REF_NAME } else { '${{ inputs.tag }}' }
+          gh release create $tag $env:MILKRUN_SETUP `
+            --repo "${{ github.repository }}" `
+            --title "Milk Run $tag" `
+            --generate-notes
