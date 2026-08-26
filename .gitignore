@@ -37,3 +37,7 @@ drone-vgm.*
 .commit_stash/
 .vcxproj.final
 .rc.final
+
+# Installer build output; installer.toml is tracked, the artifacts are not
+installer/payload/
+installer/*-Setup.exe

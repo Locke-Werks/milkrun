@@ -1,0 +1,74 @@
+[product]
+name         = "Milk Run"
+version      = "0.1.0"
+publisher    = "Locke Werks"
+description  = "Renders a MilkDrop preset to video, in sync with a song"
+copyright    = "Copyright (c) Locke Werks. Based on MilkDrop 3 by milkdrop2077 and BeatDrop by Maxim Volskiy. BSD 3-Clause."
+url          = "https://github.com/Locke-Werks/milkrun"
+icon         = "..\\assets\\milkrun.ico"
+upgrade_code = "b7c41f92-3d5a-4e18-9a6c-2f8e1d4b7a03"
+aumid        = "LockeWerks.MilkRun"
+
+[install]
+scope = "machine"
+dir   = "{pf}\\Milk Run"
+
+[ui]
+license_text = """
+Milk Run
+
+BSD 3-Clause License
+
+Copyright (c) 2018 Maxim Volskiy and individual contributors
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
+
+* Neither the name of the copyright holder nor the names of its
+  contributors may be used to endorse or promote products derived from
+  this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+"""
+
+warning = "Rendering needs a GPU that can encode HEVC. NVIDIA goes through NVENC; AMD and Intel go through Media Foundation."
+
+# No presets ship with this: the library is community content under its own
+# terms. The folder is created so the app has somewhere to look, and its
+# README says where to get them.
+
+[[options]]
+id    = "desktop_shortcut"
+label = "Put a shortcut on the desktop"
+
+[[actions]]
+type = "shortcut"
+target = "{app}\\MilkRun.exe"
+name = "Milk Run"
+
+[[actions]]
+type = "shortcut"
+target = "{app}\\MilkRun.exe"
+where = "desktop"
+name = "Milk Run"
+when = "desktop_shortcut"
+
+[[actions]]
+type = "arp"
