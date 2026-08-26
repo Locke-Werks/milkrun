@@ -437,7 +437,7 @@ unsigned __stdcall CreateWindowAndRun(void* data) {
     // Create the render window
     HWND hwnd = CreateWindowW(
         L"Direct3DWindowClass",
-        L"MilkDrop 3.0.A - Press F1 for help",
+        L"Milk Run",
         // WS_OVERLAPPEDWINDOW, // SPOUT
 		dwStyle,
 		WindowPosLeft, // SPOUT
@@ -457,7 +457,7 @@ unsigned __stdcall CreateWindowAndRun(void* data) {
     }
 
     if (!icon) {
-        icon = LoadIconW(instance, MAKEINTRESOURCEW(IDI_PLUGIN_ICON));
+        icon = LoadIconW(instance, MAKEINTRESOURCEW(IDI_APPICON));
     }
 
     SendMessageW(hwnd, WM_SETICON, ICON_BIG, (LPARAM) icon);
