@@ -297,6 +297,11 @@ public:
         float       m_fAspectY;
         float       m_fInvAspectX;
         float       m_fInvAspectY;
+        // Protected on the shell, so without these the settings window could only
+        // write them to the ini and wait for a restart.
+        using CPluginShell::m_max_fps_w;
+        using CPluginShell::m_save_cpu;
+
 		int         m_nTexBitsPerCh;
         int			m_nGridX;
         int			m_nGridY;

@@ -1,0 +1,159 @@
+// Resources for the app settings window. Kept out of plugin.rc for the same
+// reason render_dialog.rc is: that file holds nothing but an icon, a text blob
+// and the visualizer's string tables.
+//
+// No manifest resource here. render_dialog.rc already carries one for the whole
+// app, and settings_dialog.cpp activates that same one.
+
+#include <windows.h>
+#include <commctrl.h>
+#include "settings_dialog_ids.h"
+
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Settings frame
+//
+// The three pages below sit over the tab control, sized to whatever
+// TabCtrl_AdjustRect reports at run time. Their templates are a little smaller
+// than that area on purpose: a child larger than its host gets clipped, and a
+// smaller one just leaves a margin.
+//
+// WS_EX_CONTROLPARENT is what lets Tab reach the controls on a page. DS_CONTROL
+// is documented as covering that and does not: without the extended style the
+// frame's dialog manager walks straight past the pages to the buttons.
+//
+
+IDD_SETTINGS DIALOGEX 0, 0, 306, 262
+STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Milk Run Settings"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    CONTROL         "", IDC_SD_TABS, "SysTabControl32", TCS_TABS | WS_TABSTOP,
+                    7, 7, 292, 206
+
+    LTEXT           "", IDC_SD_WARNING, 7, 219, 292, 18
+
+    PUSHBUTTON      "&Reset to defaults", IDC_SD_RESET, 7, 241, 78, 14
+    DEFPUSHBUTTON   "OK", IDOK, 191, 241, 52, 14
+    PUSHBUTTON      "Cancel", IDCANCEL, 247, 241, 52, 14
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Presets page
+//
+
+IDD_SETTINGS_PRESETS DIALOGEX 0, 0, 280, 182
+STYLE DS_SETFONT | DS_CONTROL | WS_CHILD
+EXSTYLE WS_EX_CONTROLPARENT
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    GROUPBOX        "Presets", IDC_STATIC, 0, 0, 280, 46
+
+    LTEXT           "Folder", IDC_STATIC, 8, 16, 30, 8
+    EDITTEXT        IDC_SD_PRESET_DIR, 42, 13, 178, 13, ES_AUTOHSCROLL
+    PUSHBUTTON      "Browse...", IDC_SD_PRESET_DIR_BROWSE, 224, 13, 48, 13
+    AUTOCHECKBOX    "&Lock the preset when Milk Run starts",
+                    IDC_SD_LOCK_AT_STARTUP, 42, 31, 200, 10
+
+    GROUPBOX        "Preset switching", IDC_STATIC, 0, 52, 280, 54
+
+    LTEXT           "Seconds per preset", IDC_STATIC, 8, 68, 84, 8
+    EDITTEXT        IDC_SD_TIME_BETWEEN, 96, 65, 34, 13, ES_AUTOHSCROLL
+    LTEXT           "plus up to", IDC_STATIC, 138, 68, 36, 8
+    EDITTEXT        IDC_SD_TIME_RAND, 176, 65, 34, 13, ES_AUTOHSCROLL
+    LTEXT           "at random", IDC_STATIC, 214, 68, 40, 8
+
+    LTEXT           "Blend seconds", IDC_STATIC, 8, 86, 84, 8
+    EDITTEXT        IDC_SD_BLEND_AUTO, 96, 83, 34, 13, ES_AUTOHSCROLL
+    LTEXT           "automatic,", IDC_STATIC, 138, 86, 36, 8
+    EDITTEXT        IDC_SD_BLEND_USER, 176, 83, 34, 13, ES_AUTOHSCROLL
+    LTEXT           "by hand", IDC_STATIC, 214, 86, 40, 8
+
+    GROUPBOX        "Hard cuts", IDC_STATIC, 0, 112, 280, 58
+
+    AUTOCHECKBOX    "Cut straight to a new preset when the music &spikes",
+                    IDC_SD_HARD_CUTS, 8, 126, 200, 10
+
+    LTEXT           "Loudness", IDC_SD_HARD_THRESH_LABEL, 8, 143, 38, 8
+    EDITTEXT        IDC_SD_HARD_THRESH, 48, 140, 34, 13, ES_AUTOHSCROLL
+    LTEXT           "one cut per", IDC_SD_HARD_HALFLIFE_LABEL, 92, 143, 44, 8
+    EDITTEXT        IDC_SD_HARD_HALFLIFE, 138, 140, 34, 13, ES_AUTOHSCROLL
+    LTEXT           "seconds, on average", IDC_STATIC, 176, 143, 76, 8
+
+    LTEXT           "A lower loudness cuts more often. The average holds whatever the music does.",
+                    IDC_SD_HARD_HINT, 8, 158, 264, 8
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Display page
+//
+
+IDD_SETTINGS_DISPLAY DIALOGEX 0, 0, 280, 182
+STYLE DS_SETFONT | DS_CONTROL | WS_CHILD
+EXSTYLE WS_EX_CONTROLPARENT
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    GROUPBOX        "Video adapter", IDC_STATIC, 0, 0, 280, 32
+    LTEXT           "Render on", IDC_STATIC, 8, 15, 40, 8
+    COMBOBOX        IDC_SD_ADAPTER, 52, 12, 220, 120,
+                    CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+
+    GROUPBOX        "Frame rate", IDC_STATIC, 0, 36, 280, 46
+    LTEXT           "Cap at", IDC_STATIC, 8, 51, 26, 8
+    COMBOBOX        IDC_SD_MAX_FPS, 38, 48, 54, 120,
+                    CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "frames per second", IDC_STATIC, 98, 51, 70, 8
+    AUTOCHECKBOX    "&Save CPU: give time back to the system between frames",
+                    IDC_SD_SAVE_CPU, 8, 66, 240, 10
+
+    GROUPBOX        "Canvas", IDC_STATIC, 0, 86, 280, 76
+
+    LTEXT           "Colour depth", IDC_STATIC, 8, 101, 48, 8
+    COMBOBOX        IDC_SD_TEX_BITS, 60, 98, 130, 120,
+                    CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "", IDC_SD_TEX_BITS_HINT, 8, 113, 264, 16
+
+    LTEXT           "Size", IDC_STATIC, 8, 131, 48, 8
+    COMBOBOX        IDC_SD_TEX_SIZE, 60, 128, 130, 140,
+                    CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+
+    LTEXT           "Mesh", IDC_STATIC, 8, 148, 48, 8
+    EDITTEXT        IDC_SD_MESH_X, 60, 145, 30, 13, ES_AUTOHSCROLL | ES_NUMBER
+    CTEXT           "x", IDC_STATIC, 92, 148, 8, 8
+    EDITTEXT        IDC_SD_MESH_Y, 102, 145, 30, 13, ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "cells across and down", IDC_STATIC, 138, 148, 90, 8
+
+    LTEXT           "", IDC_SD_RESTART_NOTE, 0, 168, 280, 8
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// On-screen page
+//
+
+IDD_SETTINGS_OVERLAY DIALOGEX 0, 0, 280, 182
+STYLE DS_SETFONT | DS_CONTROL | WS_CHILD
+EXSTYLE WS_EX_CONTROLPARENT
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    GROUPBOX        "Show over the visualization", IDC_STATIC, 0, 0, 280, 92
+
+    AUTOCHECKBOX    "Frames per &second", IDC_SD_SHOW_FPS, 8, 16, 240, 10
+    // Not "&rating": the frame's Reset button owns Alt+R, and a duplicated
+    // mnemonic cycles focus instead of doing either thing.
+    AUTOCHECKBOX    "Preset ratin&g", IDC_SD_SHOW_RATING, 8, 30, 240, 10
+    AUTOCHECKBOX    "Preset &name", IDC_SD_SHOW_PRESET_INFO, 8, 44, 240, 10
+    AUTOCHECKBOX    "Song &title", IDC_SD_SHOW_SONG_TITLE, 8, 58, 240, 10
+    AUTOCHECKBOX    "&Animate the song title as it appears",
+                    IDC_SD_SONG_TITLE_ANIMS, 20, 72, 228, 10
+
+    LTEXT           "The animated title is drawn into the canvas itself, so it warps and blurs along with the preset. The plain one sits on top.",
+                    IDC_STATIC, 0, 100, 280, 18
+END

@@ -1106,3 +1106,4 @@ END
 #endif    // not APSTUDIO_INVOKED
 
 #include "offline\\render_dialog.rc"
+#include "offline\settings_dialog.rc"

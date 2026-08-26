@@ -20,6 +20,7 @@
 #include "app_device.h"
 #include "offline/cli.h"
 #include "offline/render_dialog.h"
+#include "offline/settings_dialog.h"
 #include "resource.h"
 
 #include <mutex>
@@ -307,6 +308,14 @@ LRESULT CALLBACK StaticWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
             // character is 0x12 rather than 'r', so Ctrl+R does not collide.
             if (wParam == 'R' && (GetKeyState(VK_CONTROL) & 0x8000)) {
                 RenderCurrentPresetToVideo(hWnd);
+                return 0;
+            }
+
+            // Ctrl+, opens app settings, the usual convention. Neither this nor
+            // Ctrl+R collides with MilkDrop's own letter bindings: those arrive as
+            // WM_CHAR, where Ctrl turns the character into a control code.
+            if (wParam == VK_OEM_COMMA && (GetKeyState(VK_CONTROL) & 0x8000)) {
+                app::ShowSettingsDialog(api_orig_hinstance, hWnd);
                 return 0;
             }
             /*if (playback && wParam >= VK_F1 && wParam <= VK_F8) {

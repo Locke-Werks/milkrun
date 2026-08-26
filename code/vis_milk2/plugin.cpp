@@ -1199,13 +1199,18 @@ void CPlugin::MyReadConfig()
 	m_bPreventScollLockHandling = GetPrivateProfileBoolW(L"settings",L"m_bPreventScollLockHandling",m_bPreventScollLockHandling,pIni);
 
     m_nCanvasStretch = 100;
-	m_nTexSizeX		= -1;
-	m_nTexSizeY		= -1;
+	// These were hardcoded, so their ini keys did nothing. The X and Y keys are
+	// new because MyWriteConfig rewrites the old nTexSize and nMeshSize with
+	// literals on every quit, erasing whatever the settings window put there.
+	const int nTexLegacy = GetPrivateProfileIntW(L"settings", L"nTexSize", -1, pIni);
+	m_nTexSizeX		= GetPrivateProfileIntW(L"settings", L"nTexSizeX", nTexLegacy, pIni);
+	m_nTexSizeY		= GetPrivateProfileIntW(L"settings", L"nTexSizeY", nTexLegacy, pIni);
 	m_bTexSizeWasAutoPow2   = (m_nTexSizeX == -2);
 	m_bTexSizeWasAutoExact = (m_nTexSizeX == -1);
 	m_nTexBitsPerCh = GetPrivateProfileIntW(L"settings", L"nTexBitsPerCh", m_nTexBitsPerCh, pIni);
-	m_nGridX		= 64;
-	m_nGridY        = 64;
+	const int nMeshLegacy = GetPrivateProfileIntW(L"settings", L"nMeshSize", 64, pIni);
+	m_nGridX		= GetPrivateProfileIntW(L"settings", L"nMeshSizeX", nMeshLegacy, pIni);
+	m_nGridY        = GetPrivateProfileIntW(L"settings", L"nMeshSizeY", nMeshLegacy, pIni);
     m_nMaxPSVersion_ConfigPanel = GetPrivateProfileIntW(L"settings",L"MaxPSVersion",m_nMaxPSVersion_ConfigPanel,pIni);
     m_nMaxImages    = 3000;
     m_nMaxBytes     = 2000000000;
