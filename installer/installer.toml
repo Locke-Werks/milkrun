@@ -1,6 +1,6 @@
 [product]
 name         = "Milk Run"
-version      = "0.2.1"
+version      = "0.3.0"
 publisher    = "Locke Werks"
 description  = "Renders a MilkDrop preset to video, in sync with a song"
 copyright    = "Copyright (c) Locke Werks. Based on MilkDrop 3 by milkdrop2077 and BeatDrop by Maxim Volskiy. BSD 3-Clause."

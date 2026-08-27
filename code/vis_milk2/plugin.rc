@@ -72,8 +72,8 @@ IDR_TEXT1               TEXT                    "text1.bin"
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,2,1,0
- PRODUCTVERSION 0,2,1,0
+ FILEVERSION 0,3,0,0
+ PRODUCTVERSION 0,3,0,0
  FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -90,12 +90,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Locke Werks"
             VALUE "FileDescription", "Milk Run - offline MilkDrop renderer"
-            VALUE "FileVersion", "0, 2, 1, 0"
+            VALUE "FileVersion", "0, 3, 0, 0"
             VALUE "InternalName", "MilkRun"
             VALUE "LegalCopyright", "Copyright © Locke Werks. Based on MilkDrop 3 by milkdrop2077 and BeatDrop by Maxim Volskiy. BSD 3-Clause."
             VALUE "OriginalFilename", "MilkRun.exe"
             VALUE "ProductName", "Milk Run"
-            VALUE "ProductVersion", "0, 2, 1, 0"
+            VALUE "ProductVersion", "0, 3, 0, 0"
         END
     END
     BLOCK "VarFileInfo"
