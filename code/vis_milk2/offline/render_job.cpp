@@ -13,6 +13,7 @@
 #include "mf_encoder.h"
 #include "mp4_muxer.h"
 #include "pq_post.h"
+#include "render_log.h"
 
 extern CPlugin g_plugin;
 
@@ -101,14 +102,22 @@ RenderResult RunRenderJob(HINSTANCE hInstance,
                           ProgressFn onProgress,
                           void* progressCtx)
 {
+    RenderLog log;
+    log.Begin(cfg.outputPath, cfg);
+
+    // Validation reports through the log as well as the return value. A job
+    // rejected before it starts is the one most in need of a written record,
+    // since nothing else about it survives.
+    #define FAIL_LOGGED(msg) do { log.End(false, 0, 0.0, (msg), L""); return Fail(msg); } while (0)
+
     if (cfg.width <= 0 || cfg.height <= 0)
-        return Fail(L"Output dimensions must be positive.");
+        FAIL_LOGGED(L"Output dimensions must be positive.");
     if (cfg.fpsNum <= 0 || cfg.fpsDen <= 0)
-        return Fail(L"Frame rate must be positive.");
+        FAIL_LOGGED(L"Frame rate must be positive.");
     if (cfg.presetPath.empty())
-        return Fail(L"No preset selected.");
+        FAIL_LOGGED(L"No preset selected.");
     if (GetFileAttributesW(cfg.presetPath.c_str()) == INVALID_FILE_ATTRIBUTES)
-        return Fail(L"Preset file not found.");
+        FAIL_LOGGED(L"Preset file not found.");
 
     const float fps = (float)cfg.fpsNum / (float)cfg.fpsDen;
 
@@ -120,8 +129,12 @@ RenderResult RunRenderJob(HINSTANCE hInstance,
     {
         std::wstring audioError;
         if (!audio.Open(cfg.audioPath, audioError))
+        {
+            log.End(false, 0, 0.0, audioError, L"");
             return Fail(audioError.c_str());
+        }
         haveAudio = true;
+        log.RecordAudio(cfg.audioPath.c_str(), audio.DurationSeconds(), AudioSource::kSampleRate, false);
     }
 
     // Audio frame index for output frame 0, when rendering a section.
@@ -182,6 +195,7 @@ RenderResult RunRenderJob(HINSTANCE hInstance,
     {
         DestroyWindow(hwnd);
         g_plugin.SetOfflineMode(false, 0.0f);
+        log.End(false, 0, 0.0, L"Could not create a Direct3D 9 device for the render.", L"");
         return Fail(L"Could not create a Direct3D 9 device for the render.");
     }
 
@@ -190,7 +204,8 @@ RenderResult RunRenderJob(HINSTANCE hInstance,
         DeinitD3d();
         DestroyWindow(hwnd);
         g_plugin.SetOfflineMode(false, 0.0f);
-        return Fail(L"MilkDrop failed to initialize for the render.");
+        log.End(false, 0, 0.0, L"MilkDrop could not start the render. The most likely cause is a preset that could not be loaded or compiled.", L"");
+        return Fail(L"MilkDrop could not start the render. The most likely cause is a preset that could not be loaded or compiled.");
     }
 
     // HDR10 needs the float intermediate in place before the first frame renders.
@@ -210,6 +225,8 @@ RenderResult RunRenderJob(HINSTANCE hInstance,
         g_plugin.m_pPqPost = &pqPost;
     }
 
+    log.RecordPresetInUse(g_plugin.m_szCurrentPresetFile, g_plugin.m_pState->m_szDesc);
+
     FrameGrabber grabber;
     if (!grabber.Init(pD3DDevice, cfg.width, cfg.height))
     {
@@ -217,6 +234,7 @@ RenderResult RunRenderJob(HINSTANCE hInstance,
         DeinitD3d();
         DestroyWindow(hwnd);
         g_plugin.SetOfflineMode(false, 0.0f);
+        log.End(false, 0, 0.0, L"Could not create the frame readback surface.", L"");
         return Fail(L"Could not create the frame readback surface.");
     }
 
@@ -294,6 +312,8 @@ RenderResult RunRenderJob(HINSTANCE hInstance,
             g_plugin.SetOfflineMode(false, 0.0f);
             return Fail(encError.c_str());
         }
+
+        log.RecordEncoder(encoder->Name(), ep.tenBitInput, cfg.pq2020);
 
         MuxerInitParams mp;
         mp.outputPath = cfg.outputPath;
@@ -428,6 +448,9 @@ RenderResult RunRenderJob(HINSTANCE hInstance,
     }
 
     result.elapsedSeconds = NowSeconds() - started;
+
+    log.End(result.error.empty() && !cancelled,
+            result.framesWritten, result.elapsedSeconds, result.error, result.warning);
 
     g_plugin.m_pPqPost = NULL;
     pqPost.Shutdown();

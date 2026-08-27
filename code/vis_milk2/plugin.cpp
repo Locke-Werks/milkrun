@@ -1025,7 +1025,6 @@ void CPlugin::MyPreInitialize()
 	m_fPresetStartTime = 0.0f;
 	m_fNextPresetTime  = -1.0f;	// negative value means no time set (...it will be auto-set on first call to UpdateTime)
     m_pPqPost = NULL;
-    m_szOfflinePreset[0] = 0;
     m_nLoadingPreset   = 0;
     m_nPresetsLoadedTotal = 0;
     m_fSnapPoint = 0.5f;
@@ -2416,12 +2415,24 @@ int CPlugin::AllocateMyDX9Stuff()
 
     if (!m_bInitialPresetSelected)
     {
-        if (IsOfflineMode() && m_szOfflinePreset[0])
+        if (IsOfflineMode())
         {
             // Offline runs one chosen preset, so skip the directory scan and the
             // random pick. Blend time 0 takes LoadPreset's synchronous path, so the
             // preset and its compiled shaders are fully live when this returns.
+            //
+            // Deliberately no fallback to a random preset. Substituting one
+            // quietly still produces a file and still reports success, and the
+            // substitution is only visible by watching the result.
+            if (!m_szOfflinePreset[0])
+                return false;
+
             LoadPreset(m_szOfflinePreset, 0.0f);
+
+            // LoadPreset reports a missing or unreadable file through the
+            // on-screen error list, which offline nobody is there to see.
+            if (!wcscmp(m_pState->m_szDesc, INVALID_PRESET_DESC))
+                return false;
         }
         else
         {

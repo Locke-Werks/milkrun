@@ -202,6 +202,7 @@ xcopy "$(ProjectDir)..\third_party\d3dx9\bin\x86\*.dll" "$(OutDir)" /Y</Command>
     <ClCompile Include="offline\mp4_muxer.cpp" />
     <ClCompile Include="offline\nvenc_encoder.cpp" />
     <ClCompile Include="offline\pq_post.cpp" />
+    <ClCompile Include="offline\render_log.cpp" />
     <ClCompile Include="offline\render_job.cpp" />
     <ClCompile Include="milkdropfs.cpp" />
     <ClCompile Include="plugin.cpp" />
@@ -242,6 +243,7 @@ xcopy "$(ProjectDir)..\third_party\d3dx9\bin\x86\*.dll" "$(OutDir)" /Y</Command>
     <ClInclude Include="offline\pq_post.h" />
     <ClInclude Include="offline\video_encoder.h" />
     <ClInclude Include="offline\render_config.h" />
+    <ClInclude Include="offline\render_log.h" />
     <ClInclude Include="offline\render_job.h" />
     <ClInclude Include="AutoCharFn.h" />
     <ClInclude Include="AutoWide.h" />
