@@ -325,6 +325,17 @@ bool TryRunCommandLine(HINSTANCE hInstance, int& exitCode)
         return true;
     }
 
+    // Without an output path the render runs and writes nothing, and used to
+    // report success doing it. That is the worst possible result for a script,
+    // which cannot tell it apart from a real render. Dumping frames is the one
+    // legitimate reason to render without a video file.
+    if (cfg.outputPath.empty() && cfg.dumpFramesDir.empty())
+    {
+        Out(L"MilkRun: --render needs --out, or --dump-frames if you only want stills.\n");
+        exitCode = 2;
+        return true;
+    }
+
     if (cfg.pq2020 && cfg.precision != Precision::High)
     {
         Out(L"MilkRun: --pq2020 needs --precision high; the conversion requires the float canvas.\n");

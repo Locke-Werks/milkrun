@@ -52,6 +52,9 @@ MilkRun.exe --render --preset "presets\foo.milk" --audio "song.flac" --out out.m
 | `--quality N` | constant-quality level, lower is better |
 | `--bitrate K` | target bitrate instead of constant quality |
 
+For scripting it, including exit codes and the traps worth knowing, see
+[docs/automation.md](docs/automation.md).
+
 `--probe-audio <file>` prints the peak sample in each frame's audio window, which is the
 quickest way to confirm a file decodes and that a transient lands where you expect.
 
