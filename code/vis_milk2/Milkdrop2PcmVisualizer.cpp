@@ -21,6 +21,7 @@
 #include "offline/cli.h"
 #include "offline/render_dialog.h"
 #include "offline/settings_dialog.h"
+#include "offline/first_run.h"
 #include "offline/control_bar.h"
 #include "offline/player_window.h"
 #include <commdlg.h>
@@ -556,6 +557,12 @@ unsigned __stdcall CreateWindowAndRun(void* data) {
         // windowHeight);
 		resolutionWidth,
 		resolutionHeight);
+
+    // After PluginInitialize on purpose: accepting loads a preset, which needs the
+    // device. PluginInitialize has already run LoadRandomPreset against the empty
+    // folder by now, so the dialog clears the error toast that left behind.
+    if (app::FirstRunNeeded())
+        app::ShowFirstRunDialog(instance, hwnd);
 
     // Buttons rather than hidden chords: nothing about this app announces that a
     // render is a keystroke away, and a visualizer window has no other chrome.

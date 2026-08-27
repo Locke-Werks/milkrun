@@ -501,6 +501,9 @@ public:
         wchar_t		m_szMsgIniFile[MAX_PATH];
         wchar_t     m_szImgIniFile[MAX_PATH];
         wchar_t		m_szPresetDir[MAX_PATH];
+        // Textures used to resolve against the install directory, so pointing
+        // presets at another library silently lost its sibling textures.
+        wchar_t		m_szTextureDir[MAX_PATH];	// ends in a backslash
         float		m_fRandStart[4];
 
         // DIRECTX 9:

@@ -1,0 +1,72 @@
+// Resources for the first-run preset setup window. Kept out of plugin.rc for the
+// same reason render_dialog.rc and settings_dialog.rc are: that file holds nothing
+// but an icon, a text blob and the visualizer's string tables.
+//
+// No manifest resource here. render_dialog.rc already carries one for the whole
+// app, and first_run.cpp activates that same one.
+
+#include <windows.h>
+#include <commctrl.h>
+#include "first_run_ids.h"
+
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// First run
+//
+// One flat dialog, no pages: this is the first thing a new user ever sees and it
+// has to be readable in a single glance. The list is filled from a worker thread
+// while the window is already up, so the layout has to hold whether the scan finds
+// nothing or a dozen folders.
+//
+// The list's column widths are set at run time as fractions of its client width.
+// LVM_SETCOLUMNWIDTH takes pixels, and the dialog is scaled for whichever monitor
+// it lands on, so a width written here would be wrong on every DPI but one.
+//
+
+IDD_FIRST_RUN DIALOGEX 0, 0, 360, 272
+STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Welcome to Milk Run"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    LTEXT           "Milk Run ships without presets. The MilkDrop preset library is community work under its own terms, so it is not bundled here. Point Milk Run at a folder of .milk files and it starts drawing.",
+                    IDC_STATIC, 7, 7, 346, 26
+
+    GROUPBOX        "Preset folders on this PC", IDC_STATIC, 7, 38, 346, 118
+
+    CONTROL         "", IDC_FR_LIST, "SysListView32",
+                    LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER |
+                    WS_BORDER | WS_TABSTOP,
+                    14, 51, 332, 78
+
+    LTEXT           "", IDC_FR_STATUS, 14, 135, 232, 16
+    PUSHBUTTON      "&Browse...", IDC_FR_BROWSE, 296, 134, 50, 14
+
+    // Both carry a path, so both elide inside it rather than at the end. An end
+    // ellipsis on a line that finishes with a folder name cuts the only part of it
+    // the user needs.
+    LTEXT           "", IDC_FR_CHOSEN, 7, 161, 346, 8, SS_PATHELLIPSIS
+    LTEXT           "", IDC_FR_TEXTURES, 7, 172, 346, 8, SS_PATHELLIPSIS
+
+    /////////////////////////////////////////////////////////////////////////
+    // The two shortcuts nobody finds on their own. Deliberately a full group
+    // box in the middle of the window rather than a line of small print at the
+    // bottom: "don't know how to setup an offline encode" is half of what the
+    // user who prompted this window could not work out.
+
+    GROUPBOX        "Buttons along the top of the window", IDC_STATIC, 7, 188, 346, 56
+
+    LTEXT           "Render Video", IDC_FR_KEY_RENDER, 16, 202, 56, 8
+    LTEXT           "Renders the preset on screen to a video file. Pick a song, a size and a frame rate, and it encodes offline as fast as the machine allows.",
+                    IDC_STATIC, 78, 202, 268, 17
+
+    LTEXT           "Settings", IDC_FR_KEY_SETTINGS, 16, 224, 56, 8
+    LTEXT           "Preset folder, switching times, canvas size, what is drawn on screen.",
+                    IDC_STATIC, 78, 224, 268, 17
+
+    AUTOCHECKBOX    "&Don't ask again", IDC_FR_DONT_ASK, 7, 252, 130, 10
+
+    DEFPUSHBUTTON   "&Use this folder", IDOK, 219, 250, 74, 14
+    PUSHBUTTON      "Not now", IDCANCEL, 299, 250, 54, 14
+END

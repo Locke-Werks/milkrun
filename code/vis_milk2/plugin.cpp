@@ -1130,6 +1130,7 @@ void CPlugin::MyPreInitialize()
 
     swprintf(m_szMilkdrop2Path, L"%s\\plugins\\%s", dir.c_str(), SUBDIR);
     swprintf(m_szPresetDir, L"%spresets\\", m_szMilkdrop2Path);
+    swprintf(m_szTextureDir, L"%stextures\\", m_szMilkdrop2Path);
 
     // note that the config dir can be under Program Files or Application Data!!
     wchar_t szConfigDir[MAX_PATH] = {0};
@@ -1229,6 +1230,7 @@ void CPlugin::MyReadConfig()
     // --------
 
 	GetPrivateProfileStringW(L"settings",L"szPresetDir",m_szPresetDir,m_szPresetDir,ARRAYSIZE(m_szPresetDir),pIni);
+	GetPrivateProfileStringW(L"settings",L"szTextureDir",m_szTextureDir,m_szTextureDir,ARRAYSIZE(m_szTextureDir),pIni);
 
 	ReadCustomMessages();
 
@@ -2909,7 +2911,7 @@ bool PickRandomTexture(const wchar_t* prefix, wchar_t* szRetTextureFilename)  //
         texfiles.clear();
 
         wchar_t szMask[MAX_PATH];
-        swprintf(szMask, L"%stextures\\*.*", g_plugin.m_szMilkdrop2Path);
+        swprintf(szMask, L"%s*.*", g_plugin.m_szTextureDir);
 
 		WIN32_FIND_DATAW ffd = {0};
 
@@ -3203,7 +3205,7 @@ void CShaderParams::CacheParams(LPD3DXCONSTANTTABLE pCT, bool bHardErrors)
                     wchar_t szFilename[MAX_PATH];
                     for (int z=0; z<sizeof(texture_exts)/sizeof(texture_exts[0]); z++)
                     {
-                        swprintf(szFilename, L"%stextures\\%s.%s", g_plugin.m_szMilkdrop2Path, szRootName, texture_exts[z].c_str());
+                        swprintf(szFilename, L"%s%s.%s", g_plugin.m_szTextureDir, szRootName, texture_exts[z].c_str());
                         if (GetFileAttributesW(szFilename) == 0xFFFFFFFF)
                         {
                             // try again, but in presets dir

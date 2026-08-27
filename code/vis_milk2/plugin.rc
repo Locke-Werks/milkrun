@@ -1107,3 +1107,4 @@ END
 
 #include "offline\\render_dialog.rc"
 #include "offline\settings_dialog.rc"
+#include "offline\first_run.rc"
