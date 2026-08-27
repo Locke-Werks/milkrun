@@ -60,11 +60,15 @@ quickest way to confirm a file decodes and that a transient lands where you expe
 
 ## In the app
 
-| | |
-| --- | --- |
-| `Ctrl+R` | Render the running preset to a file |
-| `Ctrl+,` | Settings |
-| `F1` | MilkDrop's own help, and the rest of its shortcuts |
+Buttons along the top of the window: **Render Video**, **Presets**, **Settings**,
+**Play Video**, **Help**. The bar only gets out of the way in fullscreen.
+
+`Ctrl+R` and `Ctrl+,` do the same as the first and third of those, and `F1`
+opens MilkDrop's own help with the rest of its shortcuts.
+
+On first run, with no presets configured, Milk Run looks for libraries already
+on the machine and offers them with their preset and texture counts. It ships
+none of its own: the preset library is community work under its own terms.
 
 Settings covers the preset folder, which GPU to render on, the frame cap, canvas
 colour depth and size, preset timing and hard cuts, and the on-screen readouts.
